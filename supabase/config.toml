@@ -1,0 +1,3 @@
+[functions.tutor]
+# No student JWT exists in the demo. The handler must validate x-tutor-gate itself.
+verify_jwt = false
