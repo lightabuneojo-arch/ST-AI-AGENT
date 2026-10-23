@@ -9,7 +9,6 @@ type WelcomeFormProps = { onContinue: (name: string) => void };
 export default function WelcomeForm({ onContinue }: WelcomeFormProps) {
   const [mode, setMode] = useState<"welcome" | "signup" | "login">("welcome");
   const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -53,7 +52,7 @@ export default function WelcomeForm({ onContinue }: WelcomeFormProps) {
     if (voiceGuidanceEnabled) speakText(message);
   }
 
-  async function submit(formData: FormData) {
+  function submit(formData: FormData) {
     const firstName = String(formData.get("firstName") ?? "").trim();
     const lastName = String(formData.get("lastName") ?? "").trim();
     const name = [firstName, lastName].filter(Boolean).join(" ");
@@ -75,28 +74,7 @@ export default function WelcomeForm({ onContinue }: WelcomeFormProps) {
       onContinue("Student");
       return;
     }
-
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("/api/welcome-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // Passwords stay in this form and are never sent to the email service.
-        body: JSON.stringify({ firstName, email: String(formData.get("email") ?? "").trim() }),
-      });
-      const responseBody: unknown = await response.json().catch(() => null);
-      if (!response.ok) {
-        const message = typeof responseBody === "object" && responseBody !== null
-          ? (responseBody as { error?: { message?: unknown } }).error?.message
-          : null;
-        throw new Error(typeof message === "string" ? message : "ST couldn't send the welcome email. Please try again.");
-      }
-      onContinue(name);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "ST couldn't send the welcome email. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    onContinue(name);
   }
 
   function openForm(nextMode: "signup" | "login") {
@@ -193,7 +171,7 @@ export default function WelcomeForm({ onContinue }: WelcomeFormProps) {
               </>}
               {mode === "login" && <label>Password<div className="password-field"><input name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="Enter your password" required onFocus={() => updateGuide("Enter the password you used on the demo form.")} /><button className="password-visibility" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.6" />{showPassword && <path d="m4 4 16 16" />}</svg></button></div></label>}
               {error && <p className="form-error" role="alert">{error}</p>}
-              <button className="primary-button full-button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Sending welcome email..." : mode === "signup" ? "Create account" : "Log In"}<span>&#8594;</span></button>
+              <button className="primary-button full-button" type="submit">{mode === "signup" ? "Create account" : "Log In"}<span>&#8594;</span></button>
             </form>
             <p className="switch-copy">{mode === "signup" ? "Already have a space here?" : "New to the tutor?"} <button className="text-button" onClick={() => openForm(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Log In" : "Sign Up"}</button></p>
           </>
