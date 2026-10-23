@@ -9,9 +9,12 @@ type WelcomeFormProps = { onContinue: (name: string) => void };
 export default function WelcomeForm({ onContinue }: WelcomeFormProps) {
   const [mode, setMode] = useState<"welcome" | "signup" | "login">("welcome");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceGuidanceEnabled, setVoiceGuidanceEnabled] = useState(true);
-  const [guideMessage, setGuideMessage] = useState("Let’s start with your full name. I’ll guide you through the rest.");
+  const [guideMessage, setGuideMessage] = useState("Let’s start with your first and last name. I’ll guide you through the rest.");
 
   useEffect(() => () => window.speechSynthesis?.cancel(), []);
 
@@ -50,25 +53,60 @@ export default function WelcomeForm({ onContinue }: WelcomeFormProps) {
     if (voiceGuidanceEnabled) speakText(message);
   }
 
-  function submit(formData: FormData) {
-    const name = String(formData.get("fullName") ?? "").trim();
+  async function submit(formData: FormData) {
+    const firstName = String(formData.get("firstName") ?? "").trim();
+    const lastName = String(formData.get("lastName") ?? "").trim();
+    const name = [firstName, lastName].filter(Boolean).join(" ");
+    const password = String(formData.get("password") ?? "");
+    const confirmPassword = String(formData.get("confirmPassword") ?? "");
     const required = mode === "signup"
-      ? [name, formData.get("email"), formData.get("password"), formData.get("university")]
-      : [formData.get("email"), formData.get("password")];
+      ? [firstName, lastName, formData.get("email"), password, confirmPassword]
+      : [formData.get("email"), password];
     if (required.some((value) => !String(value ?? "").trim())) {
       setError("Please complete each field so we can get your study space ready.");
       return;
     }
+    if (mode === "signup" && password !== confirmPassword) {
+      setError("Those passwords don't match yet. Please check both fields.");
+      return;
+    }
     setError("");
-    onContinue(mode === "signup" ? name : "Student");
+    if (mode === "login") {
+      onContinue("Student");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/welcome-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Passwords stay in this form and are never sent to the email service.
+        body: JSON.stringify({ firstName, email: String(formData.get("email") ?? "").trim() }),
+      });
+      const responseBody: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = typeof responseBody === "object" && responseBody !== null
+          ? (responseBody as { error?: { message?: unknown } }).error?.message
+          : null;
+        throw new Error(typeof message === "string" ? message : "ST couldn't send the welcome email. Please try again.");
+      }
+      onContinue(name);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "ST couldn't send the welcome email. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function openForm(nextMode: "signup" | "login") {
     window.speechSynthesis?.cancel();
     setIsSpeaking(false);
     setError("");
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     const message = nextMode === "signup"
-      ? "Let’s start with your full name. I’ll guide you through the rest."
+      ? "Let’s start with your first and last name, then add your email address."
       : "Welcome back! Enter your email and password to continue.";
     setGuideMessage(message);
     setMode(nextMode);
@@ -144,13 +182,18 @@ export default function WelcomeForm({ onContinue }: WelcomeFormProps) {
               </div>
             </motion.div>
             <form action={submit} className="entry-form">
-              {mode === "signup" && <label>Full name<input name="fullName" autoComplete="name" placeholder="Your name" onFocus={() => updateGuide("Enter your name so I know what to call you.")} /></label>}
-              <label>Email address<input name="email" type="email" autoComplete="email" placeholder="you@university.edu" onFocus={() => updateGuide("Add your email address. You’ll use it to enter the demo study space.")} /></label>
-              <label>Password<input name="password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} placeholder="Enter your password" onFocus={() => updateGuide(mode === "signup" ? "Choose a password for this demo form. Your details won’t be saved." : "Enter the password you used on the demo form.")} /></label>
-              {mode === "signup" && <label>University name<input name="university" placeholder="Your university" onFocus={() => updateGuide("Enter the name of your university to finish setting up this demo study space.")} />
-              </label>}
+              {mode === "signup" && <>
+                <label>First name<input name="firstName" autoComplete="given-name" placeholder="Your first name" maxLength={60} required onFocus={() => updateGuide("Enter your first name, and I’ll use it when we study together.")} /></label>
+                <label>Last name<input name="lastName" autoComplete="family-name" placeholder="Your last name" maxLength={60} required onFocus={() => updateGuide("Add your last name to complete your name.")} /></label>
+              </>}
+              <label>Email address<input name="email" type="email" autoComplete="email" placeholder="you@university.edu" maxLength={254} required onFocus={() => updateGuide("Add your email address to finish creating your demo study space.")} /></label>
+              {mode === "signup" && <>
+                <label>Password<div className="password-field"><input name="password" type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder="Create a password" required onFocus={() => updateGuide("Create a password, then enter it once more to confirm it.")} /><button className="password-visibility" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.6" />{showPassword && <path d="m4 4 16 16" />}</svg></button></div></label>
+                <label>Confirm password<div className="password-field"><input name="confirmPassword" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" placeholder="Enter your password again" required onFocus={() => updateGuide("Re-enter the same password so we can check it matches.")} /><button className="password-visibility" type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"} title={showConfirmPassword ? "Hide password" : "Show password"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.6" />{showConfirmPassword && <path d="m4 4 16 16" />}</svg></button></div></label>
+              </>}
+              {mode === "login" && <label>Password<div className="password-field"><input name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="Enter your password" required onFocus={() => updateGuide("Enter the password you used on the demo form.")} /><button className="password-visibility" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.6" />{showPassword && <path d="m4 4 16 16" />}</svg></button></div></label>}
               {error && <p className="form-error" role="alert">{error}</p>}
-              <button className="primary-button full-button" type="submit">{mode === "signup" ? "Create account" : "Log In"}<span>&#8594;</span></button>
+              <button className="primary-button full-button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Sending welcome email..." : mode === "signup" ? "Create account" : "Log In"}<span>&#8594;</span></button>
             </form>
             <p className="switch-copy">{mode === "signup" ? "Already have a space here?" : "New to the tutor?"} <button className="text-button" onClick={() => openForm(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Log In" : "Sign Up"}</button></p>
           </>

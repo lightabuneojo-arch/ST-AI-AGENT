@@ -47,7 +47,11 @@ export async function parseLectureFile(file: File): Promise<{ sourceText: string
   const parsed = await OfficeParser.parseOffice(file, { extractAttachments: true });
   const textResult = await parsed.to("text");
   const sourceText = textResult.value.trim().slice(0, MAX_TEXT_CHARACTERS);
-  if (sourceText.length < 40) throw new Error("We couldn’t find enough readable lecture text in that file. Try another document.");
+  if (sourceText.length < 40) {
+    throw new Error(file.name.toLowerCase().endsWith(".pdf")
+      ? "We couldn't find readable text in this PDF. If it is a scanned document, choose a text-searchable copy or upload its Word or PowerPoint version."
+      : "We couldn't find enough readable lecture text in that file. Please choose another DOCX, PPTX, or PDF document.");
+  }
 
   const attachments = (parsed.attachments ?? []) as OfficeAttachment[];
   const visuals: ExtractedVisual[] = [];

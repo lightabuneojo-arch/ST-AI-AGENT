@@ -11,7 +11,7 @@ A supportive AI tutor for university students who want to learn from their own l
 
 1. The student opens a warm welcome screen introducing the AI as their personal study tutor.
 2. They choose Sign Up or Log In. Sign Up collects full name, email, password, and university name; Log In collects email and password. The prototype checks that required fields are filled, then takes the student to upload. It does not create or authenticate persistent accounts.
-3. The student uploads one `.docx` or `.pptx` course material. The interface shows the file name and a friendly analysis state while the tutor reads it, identifies the main topics, and prepares it for study.
+3. The student uploads one `.docx`, `.pptx`, or text-based `.pdf` course material. The interface shows the file name and a friendly analysis state while the tutor reads it, identifies the main topics, and prepares it for study.
 4. When analysis succeeds, the student sees a ready confirmation and the identified topics, then chooses one topic.
 5. The tutor leads a text-based lesson: it explains a concept in simple terms, asks the student a question, evaluates the reply, and moves forward after demonstrated understanding or tries a simpler explanation after confusion or an incorrect answer. The student can choose **I’m Ready for the Quiz** when they want to finish the teaching portion.
 6. The student chooses an objective or theory quiz and selects 5, 10, or 15 questions. The tutor generates the quiz from the uploaded material and the topic taught.
@@ -47,7 +47,7 @@ Source: `scope.md > The POC Boundary`; user decisions during PRD discovery.
 
 ### Upload, analysis, and topic selection
 
-- Accept one `.docx` or `.pptx` material for the session.
+- Accept one `.docx`, `.pptx`, or `.pdf` material for the session. PDF text must be extractable; scanned PDFs without a text layer receive a clear message asking for a text-searchable copy.
 - Show the selected file name and a friendly progress message such as “Your tutor is reading through your material…” while analysis runs.
 - Show that the tutor is reading, identifying main topics, and preparing the material for tutoring.
 - On success, confirm readiness and show key topics; the student selects one to begin.
@@ -80,7 +80,7 @@ Source: `scope.md > The Core Loop` and `What “Working” Looks Like`; quiz dec
 
 - **First visit:** Welcome screen offers Sign Up and Log In.
 - **Form incomplete:** Identify missing required fields and let the student correct them.
-- **No material selected:** Keep the upload action visible and explain that one `.docx` or `.pptx` file is needed to begin.
+- **No material selected:** Keep the upload action visible and explain that one `.docx`, `.pptx`, or `.pdf` file is needed to begin.
 - **Analyzing:** Show the selected file and friendly progress text; make clear the tutor is reading, identifying topics, and preparing the lesson.
 - **Unsupported or failed analysis:** Explain that the material could not be processed and offer upload retry.
 - **Material ready:** Confirm success and display key topics for selection.
@@ -95,14 +95,14 @@ Source: `scope.md > The POC Boundary`; upload and session decisions during PRD d
 - The student’s learning material is the primary source for tutoring and assessment, keeping the tutor grounded in what they were taught.
 - The agent leads the lesson and adapts its next step to the student’s response; the student decides when to move to the quiz.
 - Entry forms are a lightweight prototype gate with required-field checks only. Persistent account creation, password validation against stored credentials, and sessions are excluded.
-- `.docx` and `.pptx` are the supported material formats for this POC.
+- `.docx`, `.pptx`, and text-based `.pdf` are the supported material formats for this POC. Scanned PDFs are not guaranteed without OCR.
 - The quiz is student-configured for type and length: objective or theory, with 5, 10, or 15 questions.
 - Theory responses are typed only. Voice answers are deferred because they add recording and audio-processing work that does not prove the core teaching loop.
 - Encouraging, calm language is part of the tutoring experience, including when correcting misunderstandings.
 
 ## What We’re Building
 
-A demonstrable end-to-end prototype covering the welcome and lightweight entry forms; one `.docx` or `.pptx` upload and analysis; key-topic selection; one AI-led, adaptive text tutoring session; a student-controlled transition to quiz setup; objective or typed-theory quiz generation at 5, 10, or 15 questions; and a material-grounded result summary with score and revision feedback.
+A demonstrable end-to-end prototype covering the welcome and lightweight entry forms; one `.docx`, `.pptx`, or text-based `.pdf` upload and analysis; key-topic selection; one AI-led, adaptive text tutoring session; a student-controlled transition to quiz setup; objective or typed-theory quiz generation at 5, 10, or 15 questions; and a material-grounded result summary with score and revision feedback.
 
 ## Deferred From the POC
 

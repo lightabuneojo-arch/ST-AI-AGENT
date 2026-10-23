@@ -23,7 +23,7 @@ The learner wants the AI to feel like an actual personal tutor rather than a gen
 In a short screen demo, a university student uploads one lecturer-provided course material, sees the tutor identify key topics, studies one difficult topic through a few adaptive teaching and question turns, then completes a short quiz and receives feedback. The compelling moment is seeing the tutor evaluate a confused or incorrect answer and explain the same concept differently and more simply.
 
 ## The POC Boundary
-Build one end-to-end tutoring experience for one student, one course material, and one topic at a time. Include material analysis and key-topic identification, simple explanations grounded in the material, the explicit explain-question-evaluate-adapt loop, an encouraging tone, and a short end-of-session quiz with a score or feedback. Keep account setup minimal or mocked if the demo needs an entry point. The exact supported material format is for the technical plan to settle.
+Build one end-to-end tutoring experience for one student, one course material, and one topic at a time. Include material analysis and key-topic identification, simple explanations grounded in the material, the explicit explain-question-evaluate-adapt loop, an encouraging tone, and a short end-of-session quiz with a score or feedback. Support one `.docx`, `.pptx`, or text-searchable `.pdf` file per session. Keep account setup minimal or mocked if the demo needs an entry point.
 
 ## Later
 - A full personalized timetable, including use of the student’s activities and study availability.

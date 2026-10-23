@@ -99,15 +99,33 @@ export async function POST(request: NextRequest) {
     const body: unknown = await upstream.json().catch(() => null);
     if (!upstream.ok) {
       console.error("Tutor function returned an error", upstream.status);
+      const upstreamError = typeof body === "object" && body !== null && "error" in body
+        ? (body as { error?: { code?: unknown; message?: unknown } }).error
+        : undefined;
+      const upstreamErrorCode = typeof upstreamError?.code === "string" ? upstreamError.code : undefined;
+      const upstreamErrorMessage = typeof upstreamError?.message === "string" ? upstreamError.message : undefined;
       const isTemporaryAiOutage = upstream.status === 503;
+      const isAiTimeout = upstream.status === 504;
       return withSessionCookie(errorResponse(
-        upstream.status === 429 ? 429 : isTemporaryAiOutage ? 503 : 502,
-        isTemporaryAiOutage ? "AI_TEMPORARILY_UNAVAILABLE" : "TUTOR_UPSTREAM_ERROR",
+        upstream.status === 429 ? 429 : isTemporaryAiOutage ? 503 : isAiTimeout ? 504 : 502,
         upstream.status === 429
-          ? "The tutor is busy right now. Please try again shortly."
+          ? upstreamErrorCode ?? "AI_QUOTA_OR_RATE_LIMIT"
+          : isTemporaryAiOutage ? "AI_TEMPORARILY_UNAVAILABLE" : isAiTimeout ? "AI_REQUEST_TIMEOUT" : "TUTOR_UPSTREAM_ERROR",
+        upstream.status === 429
+          ? upstreamErrorMessage ?? "The AI service has reached its current usage limit. Please wait before trying again or check your Gemini API quota."
           : isTemporaryAiOutage
             ? "The AI service is temporarily busy. Please wait a moment and try again."
-            : "Your tutor couldn't finish reading that material. Please try again.",
+            : isAiTimeout
+              ? "The AI models are taking too long to respond. Please wait a moment and try again."
+              : parsed.data.action === "teach"
+                ? "ST couldn't prepare the next lesson turn. Please try again."
+                : parsed.data.action === "practice"
+                  ? "ST couldn't prepare practice questions just now. Please try again."
+                  : parsed.data.action === "quiz"
+                    ? "ST couldn't prepare your quiz just now. Please try again."
+                    : parsed.data.action === "grade"
+                      ? "ST couldn't grade your quiz just now. Please try again."
+                  : "Your tutor couldn't finish reading that material. Please try again.",
         true,
       ), sessionId, shouldSetCookie, request);
     }
@@ -120,7 +138,24 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json(result.data);
     return withSessionCookie(response, sessionId, shouldSetCookie, request);
   } catch (cause) {
-    console.error("Tutor function request failed", cause instanceof Error ? cause.name : "unknown error");
-    return withSessionCookie(errorResponse(502, "TUTOR_UNAVAILABLE", "Your tutor is taking longer than expected. Please try again.", true), sessionId, shouldSetCookie, request);
+    const errorName = cause instanceof Error ? cause.name : "unknown error";
+    const errorMessage = cause instanceof Error ? cause.message.slice(0, 200) : "No error message was returned.";
+    const nestedCause = cause instanceof Error && typeof cause.cause === "object" && cause.cause !== null
+      ? cause.cause as { code?: unknown }
+      : null;
+    console.error("Tutor function request failed", {
+      name: errorName,
+      message: errorMessage,
+      causeCode: typeof nestedCause?.code === "string" ? nestedCause.code : undefined,
+    });
+    const timedOut = errorName === "TimeoutError";
+    return withSessionCookie(errorResponse(
+      timedOut ? 504 : 502,
+      timedOut ? "AI_REQUEST_TIMEOUT" : "TUTOR_UNAVAILABLE",
+      timedOut
+        ? "ST is taking longer than expected. Please wait a moment and try again."
+        : "ST couldn't connect to the tutor service. Please check your connection and try again.",
+      true,
+    ), sessionId, shouldSetCookie, request);
   }
 }
